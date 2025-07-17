@@ -32,11 +32,12 @@ async function handler({
   newPin,
   code,
 }) {
-  if (!userId) {
+  // Allow getNextUserId without userId, others require it
+  if (action !== "getNextUserId" && !userId) {
     console.error("[HANDLER] Missing userId");
     return { error: "Missing userId" };
   }
-  const userIdStr = String(userId);
+  const userIdStr = userId ? String(userId) : "";
 
   // Helper to parse JSON safely
   const safeParse = (str, fallback = []) => {
@@ -49,6 +50,24 @@ async function handler({
   };
 
   try {
+    // --- getNextUserId: find lowest available user_id integer starting at 1 ---
+    if (action === "getNextUserId") {
+      const rows = await sql`
+        SELECT user_id FROM users ORDER BY user_id::int ASC
+      `;
+
+      let nextId = 1;
+      for (const row of rows) {
+        const currentId = parseInt(row.user_id, 10);
+        if (currentId === nextId) {
+          nextId++;
+        } else if (currentId > nextId) {
+          break;
+        }
+      }
+      return { userId: nextId };
+    }
+
     // --- Credential check ---
     const userResult = await sql`
       SELECT user_id, used_codes FROM users
@@ -84,13 +103,16 @@ async function handler({
       }
 
       if (itemType === "profileIcon") {
-        if (ownedProfileIcons.includes(itemId)) return { error: "You already own this item" };
+        if (ownedProfileIcons.includes(itemId))
+          return { error: "You already own this item" };
         ownedProfileIcons.push(itemId);
       } else if (itemType === "theme") {
-        if (ownedThemes.includes(itemId)) return { error: "You already own this item" };
+        if (ownedThemes.includes(itemId))
+          return { error: "You already own this item" };
         ownedThemes.push(itemId);
       } else if (itemType === "boost") {
-        if (ownedBoosts.includes(itemId)) return { error: "You already own this item" };
+        if (ownedBoosts.includes(itemId))
+          return { error: "You already own this item" };
         ownedBoosts.push(itemId);
       } else {
         return { error: "Invalid itemType" };
@@ -149,13 +171,16 @@ async function handler({
       }
 
       if (itemType === "profileIcon") {
-        if (ownedProfileIcons.includes(itemId)) return { error: "You already own this item" };
+        if (ownedProfileIcons.includes(itemId))
+          return { error: "You already own this item" };
         ownedProfileIcons.push(itemId);
       } else if (itemType === "theme") {
-        if (ownedThemes.includes(itemId)) return { error: "You already own this item" };
+        if (ownedThemes.includes(itemId))
+          return { error: "You already own this item" };
         ownedThemes.push(itemId);
       } else if (itemType === "boost") {
-        if (ownedBoosts.includes(itemId)) return { error: "You already own this item" };
+        if (ownedBoosts.includes(itemId))
+          return { error: "You already own this item" };
         ownedBoosts.push(itemId);
       } else {
         return { error: "Invalid itemType" };
